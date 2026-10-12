@@ -3,6 +3,8 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.database import Base, get_db
 from app.main import app
+from app.services.embedding_service import embedding_service
+from app.core.ai_provider import MockEmbeddingProvider
 
 # Test-isolated in-memory SQLite database
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
@@ -15,6 +17,9 @@ test_async_session = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
+# Use deterministic mock embeddings for offline unit/integration test runs
+embedding_service.provider = MockEmbeddingProvider()
 
 
 @pytest_asyncio.fixture(autouse=True)

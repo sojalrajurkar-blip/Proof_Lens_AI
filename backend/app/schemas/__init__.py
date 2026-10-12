@@ -5,6 +5,11 @@ from app.schemas.document import (
     DocumentDetailResponse,
     DocumentPageResponse,
 )
+from app.schemas.query import (
+    RetrievalRequest,
+    RetrievedChunkResponse,
+    RetrievalResponse,
+)
 
 __all__ = [
     "WorkspaceCreate",
@@ -12,4 +17,7 @@ __all__ = [
     "DocumentResponse",
     "DocumentDetailResponse",
     "DocumentPageResponse",
+    "RetrievalRequest",
+    "RetrievedChunkResponse",
+    "RetrievalResponse",
 ]

@@ -34,6 +34,7 @@ class Document(Base):
 
     workspace = relationship("Workspace", back_populates="documents")
     pages = relationship("DocumentPage", back_populates="document", cascade="all, delete-orphan", order_by="DocumentPage.page_number")
+    chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan", order_by="DocumentChunk.chunk_index")
 
 
 class DocumentPage(Base):

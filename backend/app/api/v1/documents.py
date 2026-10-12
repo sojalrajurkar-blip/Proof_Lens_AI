@@ -93,7 +93,7 @@ async def upload_document(
     )
     db.add(document)
 
-    # 8. Record DocumentPages if extraction succeeded
+    # 8. Record DocumentPages and Chunks if extraction succeeded
     if extraction and extraction.pages and not extraction.is_scanned:
         for p in extraction.pages:
             page_record = DocumentPage(
@@ -104,6 +104,30 @@ async def upload_document(
                 word_count=p["word_count"],
             )
             db.add(page_record)
+
+        # 9. Generate page-bound chunks and vector embeddings
+        from app.services.chunking_service import chunking_service
+        from app.services.embedding_service import embedding_service
+        from app.models.chunk import DocumentChunk
+        import json
+
+        chunks = chunking_service.chunk_document_pages(extraction.pages)
+        if chunks:
+            chunk_texts = [c["content"] for c in chunks]
+            vectors = embedding_service.embed_texts(chunk_texts)
+
+            for c, vec in zip(chunks, vectors):
+                chunk_record = DocumentChunk(
+                    document_id=document_id,
+                    workspace_id=workspace_id,
+                    page_number=c["page_number"],
+                    chunk_index=c["chunk_index"],
+                    content=c["content"],
+                    embedding_json=json.dumps(vec),
+                    char_count=c["char_count"],
+                    word_count=c["word_count"],
+                )
+                db.add(chunk_record)
 
     await db.commit()
     await db.refresh(document)
