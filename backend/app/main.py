@@ -1,9 +1,13 @@
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
+from app.database import init_db
 from app.api.v1.health import router as health_router
+from app.api.v1.workspaces import router as workspaces_router
+from app.api.v1.documents import router as documents_router
 
 # Configure logging
 logging.basicConfig(
@@ -12,12 +16,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger("prooflens")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize database tables if connected
+    logger.info("Initializing ProofLens AI application...")
+    await init_db()
+    yield
+    logger.info("Shutting down ProofLens AI application...")
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="ProofLens AI — From Documents to Verifiable Answers",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS setup
@@ -46,6 +61,8 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 # Include API Routers
 app.include_router(health_router, prefix="/api/v1")
+app.include_router(workspaces_router, prefix="/api/v1")
+app.include_router(documents_router, prefix="/api/v1")
 
 
 @app.get("/", tags=["Root"])
