@@ -9,7 +9,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.workspace import Workspace
 from app.models.document import Document, DocumentPage
-from app.schemas.document import DocumentResponse, DocumentDetailResponse
+from app.schemas.document import DocumentResponse, DocumentDetailResponse, PassageDetailResponse
 from app.services.storage_service import storage_service
 from app.services.pdf_service import pdf_service
 
@@ -194,3 +194,59 @@ async def delete_document(
     await db.delete(document)
     await db.commit()
     return None
+
+
+@router.get(
+    "/workspaces/{workspace_id}/documents/{document_id}/passages/{chunk_id}",
+    response_model=PassageDetailResponse,
+    tags=["Documents", "Passages"],
+)
+async def get_passage(
+    workspace_id: str,
+    document_id: str,
+    chunk_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve full details of a specific cited passage, with navigation to adjacent chunks."""
+    document = await db.get(Document, document_id)
+    if not document or document.workspace_id != workspace_id:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    from app.models.chunk import DocumentChunk
+
+    chunk = await db.get(DocumentChunk, chunk_id)
+    if not chunk or chunk.document_id != document_id or chunk.workspace_id != workspace_id:
+        raise HTTPException(status_code=404, detail="Passage chunk not found.")
+
+    # Find prev and next chunks on the same document if they exist
+    prev_stmt = (
+        select(DocumentChunk.id)
+        .where(
+            DocumentChunk.document_id == document_id,
+            DocumentChunk.chunk_index == chunk.chunk_index - 1,
+        )
+    )
+    prev_id = (await db.execute(prev_stmt)).scalar_one_or_none()
+
+    next_stmt = (
+        select(DocumentChunk.id)
+        .where(
+            DocumentChunk.document_id == document_id,
+            DocumentChunk.chunk_index == chunk.chunk_index + 1,
+        )
+    )
+    next_id = (await db.execute(next_stmt)).scalar_one_or_none()
+
+    return PassageDetailResponse(
+        chunk_id=chunk.id,
+        document_id=chunk.document_id,
+        workspace_id=chunk.workspace_id,
+        filename=document.filename,
+        page_number=chunk.page_number,
+        chunk_index=chunk.chunk_index,
+        content=chunk.content,
+        char_count=chunk.char_count,
+        word_count=chunk.word_count,
+        prev_chunk_id=prev_id,
+        next_chunk_id=next_id,
+    )

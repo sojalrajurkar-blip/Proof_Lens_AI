@@ -11,11 +11,20 @@ class Base(DeclarativeBase):
     pass
 
 
+connect_args = {}
+if "postgresql" in settings.DATABASE_URL:
+    import ssl
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl.CERT_NONE
+    connect_args["ssl"] = ssl_ctx
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     future=True,
     pool_pre_ping=True,
+    connect_args=connect_args,
 )
 
 async_session = async_sessionmaker(

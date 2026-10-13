@@ -9,6 +9,7 @@ from app.api.v1.health import router as health_router
 from app.api.v1.workspaces import router as workspaces_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.query import router as query_router
+from app.api.v1.comparison import router as comparison_router
 
 # Configure logging
 logging.basicConfig(
@@ -40,6 +41,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -65,6 +67,7 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(workspaces_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
 app.include_router(query_router, prefix="/api/v1")
+app.include_router(comparison_router, prefix="/api/v1")
 
 
 @app.get("/", tags=["Root"])

@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # AI Provider (Gemini)
     GEMINI_API_KEY: str = Field(default="", description="Google Gemini API Key")
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
-    GEMINI_CHAT_MODEL: str = "gemini-2.5-flash"
+    GEMINI_CHAT_MODEL: str = "gemini-3.5-flash-lite"
 
     # RAG Settings
     RETRIEVAL_TOP_K: int = 5

@@ -18,8 +18,17 @@ test_async_session = async_sessionmaker(
     autoflush=False,
 )
 
-# Use deterministic mock embeddings for offline unit/integration test runs
+# Use deterministic mock embeddings and generation for offline unit/integration test runs
 embedding_service.provider = MockEmbeddingProvider()
+
+from app.services.qa_service import qa_service
+from app.services.comparison_service import comparison_service
+from app.core.ai_provider import MockGenerationProvider
+mock_gen = MockGenerationProvider()
+qa_service.provider = mock_gen
+qa_service.model_name = "mock-generator-v1"
+comparison_service.provider = mock_gen
+comparison_service.model_name = "mock-generator-v1"
 
 
 @pytest_asyncio.fixture(autouse=True)

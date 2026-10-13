@@ -44,3 +44,17 @@ class DocumentDetailResponse(DocumentResponse):
     pages: List[DocumentPageResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PassageDetailResponse(BaseModel):
+    chunk_id: str
+    document_id: str
+    workspace_id: str
+    filename: str
+    page_number: int
+    chunk_index: int
+    content: str
+    char_count: int
+    word_count: int
+    prev_chunk_id: Optional[str] = None
+    next_chunk_id: Optional[str] = None
