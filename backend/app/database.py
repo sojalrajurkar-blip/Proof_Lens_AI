@@ -12,7 +12,7 @@ class Base(DeclarativeBase):
 
 
 connect_args = {}
-if "postgresql" in settings.DATABASE_URL:
+if "postgresql" in settings.DATABASE_URL and "localhost" not in settings.DATABASE_URL and "127.0.0.1" not in settings.DATABASE_URL:
     import ssl
     ssl_ctx = ssl.create_default_context()
     ssl_ctx.check_hostname = False
