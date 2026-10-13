@@ -49,11 +49,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> bool:
-    """Initialize database tables. Returns True if successful, False otherwise."""
+    """Initialize database tables and vector extensions. Returns True if successful, False otherwise."""
     try:
+        import app.models.workspace
+        import app.models.document
+        import app.models.chunk
+
         async with engine.begin() as conn:
+            if "postgresql" in settings.DATABASE_URL:
+                from sqlalchemy import text
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables initialized successfully.")
+        logger.info("Database tables and vector extension initialized successfully.")
         return True
     except Exception as e:
         logger.warning(
