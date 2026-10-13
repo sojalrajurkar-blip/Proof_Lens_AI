@@ -202,12 +202,10 @@ Exit Code: 0
 
 ---
 
-## 4. Final MVP Status & Optional Phase 9 (Production Deployment)
+## 4. Phase 9 (Deployment & Database Orchestration) Status
 
-All core requirements for the ProofLens AI Minimum Viable Product (Phases 0 through 8) are **100% complete, tested, and verified**.
-
-As defined in [ProofLens-AI-Master-Specification-Antigravity.md](file:///d:/ProjectFolder/Proof_Lens_AI/docs/ProofLens-AI-Master-Specification-Antigravity.md), **Phase 9 (Optional Production Deployment)** is strictly optional and requires a separate proposal covering:
-- Hosting targets (e.g. Vercel for Next.js, Cloud Run / Render / VPS for FastAPI backend).
-- Managed PostgreSQL with `pgvector` or Supabase / Neon.
-- Cloud object storage (S3 / GCS) vs persistent container volumes.
-- Domain name configuration, SSL/TLS, and provider quota management.
+- **Local Development Database**: Switched from SQLite to native **PostgreSQL 18** (`localhost:5432/prooflens_ai`) with automatic non-SSL local fallback.
+- **Cloud Database**: Verified Supabase PostgreSQL (`aws-0-ap-south-1.pooler.supabase.com:5432/postgres`) with automatic asyncpg SSL encryption.
+- **Backend Deployment**: Render configured with [Dockerfile](file:///d:/ProjectFolder/Proof_Lens_AI/backend/Dockerfile) and [render.yaml](file:///d:/ProjectFolder/Proof_Lens_AI/render.yaml).
+- **Frontend Deployment**: Vercel Next.js dashboard deployed with dynamic CORS support.
+- **Test Suite**: 28/28 automated tests passing against both SQLite and PostgreSQL engines.
