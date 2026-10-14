@@ -72,52 +72,61 @@ class RetrievalService:
         # 2. If PostgreSQL, attempt native pgvector vector search (<=> cosine distance operator)
         if "postgresql" in settings.DATABASE_URL:
             try:
-                dist_col = DocumentChunk.embedding.cosine_distance(raw_query_vec).label("distance")
-                stmt = (
-                    select(DocumentChunk, dist_col)
-                    .options(selectinload(DocumentChunk.document))
-                    .where(
-                        DocumentChunk.workspace_id == workspace_id,
-                        DocumentChunk.embedding.is_not(None),
-                    )
-                )
-                if document_ids:
-                    stmt = stmt.where(DocumentChunk.document_id.in_(document_ids))
-                stmt = stmt.order_by("distance").limit(top_k)
-
-                result = await db.execute(stmt)
-                rows = result.all()
-                if rows:
-                    scored_chunks = []
-                    for chk, dist in rows:
-                        score = round(max(0.0, 1.0 - float(dist)), 4) if dist is not None else 0.0
-                        scored_chunks.append(
-                            RetrievedChunk(
-                                chunk_id=chk.id,
-                                document_id=chk.document_id,
-                                filename=chk.document.filename if chk.document else "Unknown",
-                                page_number=chk.page_number,
-                                chunk_index=chk.chunk_index,
-                                content=chk.content,
-                                similarity_score=score,
-                            )
+                async with db.begin_nested():
+                    dist_expr = DocumentChunk.embedding.cosine_distance(raw_query_vec)
+                    stmt = (
+                        select(DocumentChunk, dist_expr.label("distance"))
+                        .options(selectinload(DocumentChunk.document))
+                        .where(
+                            DocumentChunk.workspace_id == workspace_id,
+                            DocumentChunk.embedding.is_not(None),
                         )
-                    return scored_chunks
+                    )
+                    if document_ids:
+                        stmt = stmt.where(DocumentChunk.document_id.in_(document_ids))
+                    stmt = stmt.order_by(dist_expr).limit(top_k)
+
+                    result = await db.execute(stmt)
+                    rows = result.all()
+                    if rows:
+                        scored_chunks = []
+                        for chk, dist in rows:
+                            score = round(max(0.0, 1.0 - float(dist)), 4) if dist is not None else 0.0
+                            scored_chunks.append(
+                                RetrievedChunk(
+                                    chunk_id=chk.id,
+                                    document_id=chk.document_id,
+                                    filename=chk.document.filename if chk.document else "Unknown",
+                                    page_number=chk.page_number,
+                                    chunk_index=chk.chunk_index,
+                                    content=chk.content,
+                                    similarity_score=score,
+                                )
+                            )
+                        return scored_chunks
             except Exception as e:
                 logger.warning(f"Native pgvector SQL query fallback to in-memory: {e}")
 
         # 3. In-memory fallback (for SQLite tests or non-vector environments)
-        query_vec = np.array(raw_query_vec, dtype=np.float32)
-        stmt = (
-            select(DocumentChunk)
-            .options(selectinload(DocumentChunk.document))
-            .where(DocumentChunk.workspace_id == workspace_id)
-        )
-        if document_ids:
-            stmt = stmt.where(DocumentChunk.document_id.in_(document_ids))
+        try:
+            query_vec = np.array(raw_query_vec, dtype=np.float32)
+            stmt = (
+                select(DocumentChunk)
+                .options(selectinload(DocumentChunk.document))
+                .where(DocumentChunk.workspace_id == workspace_id)
+            )
+            if document_ids:
+                stmt = stmt.where(DocumentChunk.document_id.in_(document_ids))
 
-        result = await db.execute(stmt)
-        chunks = result.scalars().all()
+            result = await db.execute(stmt)
+            chunks = result.scalars().all()
+        except Exception as e:
+            logger.error(f"In-memory retrieval fallback failed: {e}")
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            return []
 
         if not chunks:
             return []

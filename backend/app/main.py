@@ -50,13 +50,21 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Safe global exception handler avoiding internal stack trace exposure."""
+    """Safe global exception handler avoiding internal stack trace exposure while guaranteeing CORS headers."""
     logger.error(f"Unhandled error processing {request.method} {request.url.path}: {exc}", exc_info=True)
+    headers = {}
+    origin = request.headers.get("origin")
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        headers["Access-Control-Allow-Methods"] = "*"
+        headers["Access-Control-Allow-Headers"] = "*"
     return JSONResponse(
         status_code=500,
+        headers=headers,
         content={
             "error": "InternalServerError",
-            "message": "An unexpected error occurred while processing the request.",
+            "message": str(exc) if (settings.DEBUG or settings.ENVIRONMENT == "development") else "An unexpected error occurred while processing the request.",
             "path": request.url.path,
         },
     )

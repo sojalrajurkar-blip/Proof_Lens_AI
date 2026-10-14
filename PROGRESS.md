@@ -204,8 +204,12 @@ Exit Code: 0
 
 ## 4. Phase 9 (Deployment & Database Orchestration) Status
 
-- **Local Development Database**: Switched from SQLite to native **PostgreSQL 18** (`localhost:5432/prooflens_ai`) with automatic non-SSL local fallback.
-- **Cloud Database**: Verified Supabase PostgreSQL (`aws-0-ap-south-1.pooler.supabase.com:5432/postgres`) with automatic asyncpg SSL encryption.
+- **Local Development Database**: Switched to native **PostgreSQL 18** (`localhost:5432/prooflens_ai`) with native **`pgvector 0.8.6`** C-extension compiled for Windows x64.
+- **Native pgvector Integration**:
+  - Installed `pgvector` extension and configured SQLAlchemy `Vector(3072)` column on `document_chunks`.
+  - Implemented SQL-level native cosine distance retrieval (`<=>` operator) with automatic in-memory fallback for unit tests.
+  - Verified live E2E ingestion with `Assignment1.pdf` and pgvector top-k similarity retrieval.
+- **Cloud Database**: Verified Supabase PostgreSQL (`aws-0-ap-south-1.pooler.supabase.com:5432/postgres`) with automatic asyncpg SSL encryption and native pgvector support.
 - **Backend Deployment**: Render configured with [Dockerfile](file:///d:/ProjectFolder/Proof_Lens_AI/backend/Dockerfile) and [render.yaml](file:///d:/ProjectFolder/Proof_Lens_AI/render.yaml).
 - **Frontend Deployment**: Vercel Next.js dashboard deployed with dynamic CORS support.
-- **Test Suite**: 28/28 automated tests passing against both SQLite and PostgreSQL engines.
+- **Test Suite**: 28/28 automated tests passing (`pytest -v`).
