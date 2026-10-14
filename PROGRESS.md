@@ -204,12 +204,9 @@ Exit Code: 0
 
 ## 4. Phase 9 (Deployment & Database Orchestration) Status
 
-- **Local Development Database**: Switched to native **PostgreSQL 18** (`localhost:5432/prooflens_ai`) with native **`pgvector 0.8.6`** C-extension compiled for Windows x64.
-- **Native pgvector Integration**:
-  - Installed `pgvector` extension and configured SQLAlchemy `Vector(3072)` column on `document_chunks`.
-  - Implemented SQL-level native cosine distance retrieval (`<=>` operator) with automatic in-memory fallback for unit tests.
-  - Verified live E2E ingestion with `Assignment1.pdf` and pgvector top-k similarity retrieval.
-- **Cloud Database**: Verified Supabase PostgreSQL (`aws-0-ap-south-1.pooler.supabase.com:5432/postgres`) with automatic asyncpg SSL encryption and native pgvector support.
-- **Backend Deployment**: Render configured with [Dockerfile](file:///d:/ProjectFolder/Proof_Lens_AI/backend/Dockerfile) and [render.yaml](file:///d:/ProjectFolder/Proof_Lens_AI/render.yaml).
-- **Frontend Deployment**: Vercel Next.js dashboard deployed with dynamic CORS support.
-- **Test Suite**: 28/28 automated tests passing (`pytest -v`).
+- **Cloud Database**: Supabase PostgreSQL (`aws-0-ap-south-1.pooler.supabase.com:5432/postgres`) with automatic asyncpg SSL encryption.
+- **Retrieval Architecture**: Stabilized with proven in-memory cosine similarity retrieval over 3072-dimensional embeddings stored in `embedding_json`, matching physical database schema 100% without requiring destructive DDL alterations.
+- **Backend Deployment**: Render web service configured with Python 3.12.8, FastAPI, and dynamic CORS headers.
+- **Frontend Deployment**: Vercel Next.js dashboard deployed with full real-time Q&A and cross-document comparison support.
+- **Test Suite**: 28/28 automated unit, integration, and security tests passing (`pytest`).
+

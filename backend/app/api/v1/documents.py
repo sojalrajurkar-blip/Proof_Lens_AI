@@ -123,7 +123,6 @@ async def upload_document(
                     page_number=c["page_number"],
                     chunk_index=c["chunk_index"],
                     content=c["content"],
-                    embedding=vec,
                     embedding_json=json.dumps(vec),
                     char_count=c["char_count"],
                     word_count=c["word_count"],

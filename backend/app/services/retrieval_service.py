@@ -61,79 +61,33 @@ class RetrievalService:
         top_k: int = settings.RETRIEVAL_TOP_K,
         document_ids: Optional[List[str]] = None,
     ) -> List[RetrievedChunk]:
-        """Retrieve top-k relevant document chunks within workspace scope using pgvector or cosine similarity."""
+        """Retrieve top-k relevant document chunks within workspace scope using cosine similarity."""
         query = query.strip()
         if not query:
             return []
 
         # 1. Embed query
-        raw_query_vec = embedding_service.embed_query(query)
+        query_vec = np.array(embedding_service.embed_query(query), dtype=np.float32)
 
-        # 2. If PostgreSQL, attempt native pgvector vector search (<=> cosine distance operator)
-        if "postgresql" in settings.DATABASE_URL:
-            try:
-                async with db.begin_nested():
-                    dist_expr = DocumentChunk.embedding.cosine_distance(raw_query_vec)
-                    stmt = (
-                        select(DocumentChunk, dist_expr.label("distance"))
-                        .options(selectinload(DocumentChunk.document))
-                        .where(
-                            DocumentChunk.workspace_id == workspace_id,
-                            DocumentChunk.embedding.is_not(None),
-                        )
-                    )
-                    if document_ids:
-                        stmt = stmt.where(DocumentChunk.document_id.in_(document_ids))
-                    stmt = stmt.order_by(dist_expr).limit(top_k)
+        # 2. Query workspace chunks with document details loaded
+        stmt = (
+            select(DocumentChunk)
+            .options(selectinload(DocumentChunk.document))
+            .where(DocumentChunk.workspace_id == workspace_id)
+        )
+        if document_ids:
+            stmt = stmt.where(DocumentChunk.document_id.in_(document_ids))
 
-                    result = await db.execute(stmt)
-                    rows = result.all()
-                    if rows:
-                        scored_chunks = []
-                        for chk, dist in rows:
-                            score = round(max(0.0, 1.0 - float(dist)), 4) if dist is not None else 0.0
-                            scored_chunks.append(
-                                RetrievedChunk(
-                                    chunk_id=chk.id,
-                                    document_id=chk.document_id,
-                                    filename=chk.document.filename if chk.document else "Unknown",
-                                    page_number=chk.page_number,
-                                    chunk_index=chk.chunk_index,
-                                    content=chk.content,
-                                    similarity_score=score,
-                                )
-                            )
-                        return scored_chunks
-            except Exception as e:
-                logger.warning(f"Native pgvector SQL query fallback to in-memory: {e}")
-
-        # 3. In-memory fallback (for SQLite tests or non-vector environments)
-        try:
-            query_vec = np.array(raw_query_vec, dtype=np.float32)
-            stmt = (
-                select(DocumentChunk)
-                .options(selectinload(DocumentChunk.document))
-                .where(DocumentChunk.workspace_id == workspace_id)
-            )
-            if document_ids:
-                stmt = stmt.where(DocumentChunk.document_id.in_(document_ids))
-
-            result = await db.execute(stmt)
-            chunks = result.scalars().all()
-        except Exception as e:
-            logger.error(f"In-memory retrieval fallback failed: {e}")
-            try:
-                await db.rollback()
-            except Exception:
-                pass
-            return []
+        result = await db.execute(stmt)
+        chunks = result.scalars().all()
 
         if not chunks:
             return []
 
+        # 3. Calculate similarity score for each candidate chunk
         scored_chunks: List[RetrievedChunk] = []
         for chk in chunks:
-            chk_vec = np.array(chk.get_vector(), dtype=np.float32)
+            chk_vec = np.array(chk.embedding, dtype=np.float32)
             score = self._cosine_similarity(query_vec, chk_vec)
             scored_chunks.append(
                 RetrievedChunk(
@@ -147,7 +101,10 @@ class RetrievalService:
                 )
             )
 
+        # 4. Sort descending by similarity score
         scored_chunks.sort(key=lambda x: x.similarity_score, reverse=True)
+
+        # 5. Return top-k
         return scored_chunks[:top_k]
 
 
